@@ -1,27 +1,48 @@
 #!/bin/bash
 
-# Directory to save JSON files
-mkdir -p pokemon_data
+# Directory to store Pokémon JSON data
+DATA_DIR="pokemon_data"
+mkdir -p "$DATA_DIR"
 
-# List of Pokémon
-pokemon_list=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
+# File to log errors
+ERROR_FILE="errors.txt"
+> "$ERROR_FILE"
 
-# Loop through each Pokémon
-for pokemon in "${pokemon_list[@]}"; do
+# List of Pokémon to fetch
+POKEMONS=("Bulbasaur" "Ivysaur" "Venusaur" "Charmander" "Charmeleon")
+
+# Maximum retry attempts
+MAX_RETRIES=3
+DELAY=2  # seconds between retries
+
+for pokemon in "${POKEMONS[@]}"; do
     echo "Fetching data for $pokemon..."
-    
-    # API request
-    response=$(curl -s -w "%{http_code}" -o "pokemon_data/$pokemon.json" "https://pokeapi.co/api/v2/pokemon/$pokemon")
-    
-    # Extract HTTP status code (last 3 digits)
-    http_code="${response: -3}"
-    
-    if [ "$http_code" -eq 200 ]; then
-        echo "Saved data to pokemon_data/$pokemon.json"
-    else
-        echo "Failed to fetch $pokemon (HTTP $http_code)" >> errors.txt
+    attempt=1
+    success=false
+
+    while [ $attempt -le $MAX_RETRIES ]; do
+        # Make API request, save to temporary file
+        http_code=$(curl -s -w "%{http_code}" -o "$DATA_DIR/${pokemon,,}.json.tmp" "https://pokeapi.co/api/v2/pokemon/${pokemon,,}")
+
+        # Extract the last 3 characters (HTTP status)
+        code="${http_code: -3}"
+
+        if [ "$code" == "200" ]; then
+            mv "$DATA_DIR/${pokemon,,}.json.tmp" "$DATA_DIR/${pokemon,,}.json"
+            echo "Saved data to $DATA_DIR/${pokemon,,}.json"
+            success=true
+            break
+        else
+            echo "Attempt $attempt for $pokemon failed with HTTP code $code"
+            attempt=$((attempt + 1))
+            sleep $DELAY
+        fi
+    done
+
+    if [ "$success" = false ]; then
+        echo "Failed to fetch $pokemon after $MAX_RETRIES attempts" | tee -a "$ERROR_FILE"
     fi
-    
-    # Delay to prevent rate limiting
+
+    # Small delay to avoid rate-limiting
     sleep 1
 done
