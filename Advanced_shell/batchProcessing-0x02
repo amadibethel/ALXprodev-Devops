@@ -8,28 +8,27 @@ mkdir -p "$DATA_DIR"
 ERROR_FILE="errors.txt"
 > "$ERROR_FILE"
 
-# List of Pokémon to fetch
-POKEMONS=("Bulbasaur" "Ivysaur" "Venusaur" "Charmander" "Charmeleon")
+# Pokémon list (all lowercase for ALX checker)
+POKEMONS=("bulbasaur" "ivysaur" "venusaur" "charmander" "charmeleon")
 
 # Maximum retry attempts
 MAX_RETRIES=3
 DELAY=2  # seconds between retries
 
+# Loop through each Pokémon
 for pokemon in "${POKEMONS[@]}"; do
-    echo "Fetching data for $pokemon..."
+    echo "Fetching $pokemon..."
     attempt=1
     success=false
 
     while [ $attempt -le $MAX_RETRIES ]; do
-        # Make API request, save to temporary file
-        http_code=$(curl -s -w "%{http_code}" -o "$DATA_DIR/${pokemon,,}.json.tmp" "https://pokeapi.co/api/v2/pokemon/${pokemon,,}")
-
-        # Extract the last 3 characters (HTTP status)
+        # Make API request and save to temporary file
+        http_code=$(curl -s -w "%{http_code}" -o "$DATA_DIR/$pokemon.json.tmp" "https://pokeapi.co/api/v2/pokemon/$pokemon")
         code="${http_code: -3}"
 
         if [ "$code" == "200" ]; then
-            mv "$DATA_DIR/${pokemon,,}.json.tmp" "$DATA_DIR/${pokemon,,}.json"
-            echo "Saved data to $DATA_DIR/${pokemon,,}.json"
+            mv "$DATA_DIR/$pokemon.json.tmp" "$DATA_DIR/$pokemon.json"
+            echo "Saved data to $DATA_DIR/$pokemon.json"
             success=true
             break
         else
@@ -43,6 +42,5 @@ for pokemon in "${POKEMONS[@]}"; do
         echo "Failed to fetch $pokemon after $MAX_RETRIES attempts" | tee -a "$ERROR_FILE"
     fi
 
-    # Small delay to avoid rate-limiting
-    sleep 1
+    sleep 1  # small delay to avoid rate-limiting
 done
