@@ -1,23 +1,14 @@
 #!/bin/bash
-# Script: data_extraction_automation-0x01
-# Objective: Extract Pokémon details from data.json and print in human-readable form.
 
-# Check if data.json exists
-if [ ! -f data.json ]; then
-  echo "Error: data.json not found! Please run apiAutomation-0x00 first."
-  exit 1
-fi
-
-# Extract data using jq
-name=$(jq -r '.name' data.json | sed 's/.*/\u&/')  # Capitalize first letter
+# Extract relevant data from the JSON file
+name=$(jq -r '.name' data.json)
 height=$(jq -r '.height' data.json)
 weight=$(jq -r '.weight' data.json)
-type=$(jq -r '.types[0].type.name' data.json | sed 's/.*/\u&/')  # Capitalize
+type=$(jq -r '.types[0].type.name' data.json)
 
-# Convert units:
-# Pokémon height and weight are given in decimeters and hectograms
-height_m=$(awk -v h="$height" 'BEGIN { printf "%.1f", h/10 }')  # decimeters → meters
-weight_kg=$(awk -v w="$weight" 'BEGIN { printf "%.1f", w/10 }')  # hectograms → kilograms
+# Convert decimeters to meters and hectograms to kilograms
+formatted_height=$(awk "BEGIN {printf \"%.1f\", $height / 10}")
+formatted_weight=$(awk "BEGIN {printf \"%.0f\", $weight / 10}")
 
-# Display the result
-echo "$name is of type $type, weighs ${weight_kg}kg, and is ${height_m}m tall."
+# Display formatted output in a human-readable way
+echo "$name is of type $type, weighs ${formatted_weight}kg, and is ${formatted_height}m tall."
