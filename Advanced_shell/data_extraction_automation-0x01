@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Extract relevant data from the JSON file
+# Extract data from the JSON file
 name=$(jq -r '.name' data.json)
 height=$(jq -r '.height' data.json)
 weight=$(jq -r '.weight' data.json)
@@ -9,6 +9,10 @@ type=$(jq -r '.types[0].type.name' data.json)
 # Convert decimeters to meters and hectograms to kilograms
 formatted_height=$(awk "BEGIN {printf \"%.1f\", $height / 10}")
 formatted_weight=$(awk "BEGIN {printf \"%.0f\", $weight / 10}")
+
+# Use sed to ensure proper capitalization or cleanup if needed
+# (In case the type name is lowercase, e.g. "electric" → "Electric")
+type=$(echo "$type" | sed 's/^\(.\)/\U\1/')
 
 # Display formatted output in a human-readable way
 echo "$name is of type $type, weighs ${formatted_weight}kg, and is ${formatted_height}m tall."
