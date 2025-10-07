@@ -1,44 +1,38 @@
 #!/bin/bash
 
-# Output CSV file
-report_file="pokemon_report.csv"
+# Directory containing Pokémon JSON files
+DATA_DIR="pokemon_data"
+CSV_FILE="pokemon_report.csv"
 
-# CSV header
-echo "Name,Height (m),Weight (kg)" > "$report_file"
+mkdir -p "$DATA_DIR"
 
-# Variables to calculate averages
-total_height=0
-total_weight=0
-count=0
+# Initialize CSV file
+echo "Name,Height (m),Weight (kg)" > "$CSV_FILE"
 
-# Loop through all JSON files
-for file in pokemon_data/*.json; do
-    # Extract data using jq
-    name=$(jq -r '.name' "$file" | awk '{print toupper(substr($0,1,1)) substr($0,2)}')
+# Loop through each Pokémon JSON file
+for file in "$DATA_DIR"/*.json; do
+    # Skip if no files found
+    [ -e "$file" ] || continue
+
+    # Extract name, height, weight using jq
+    name=$(jq -r '.name' "$file" | sed 's/.*/\u&/')  # Capitalize first letter
     height=$(jq -r '.height' "$file")
     weight=$(jq -r '.weight' "$file")
-    
-    # Convert height/weight to meters/kilograms if necessary
-    # (PokéAPI gives height in decimeters and weight in hectograms)
-    height_m=$(awk "BEGIN {printf \"%.1f\", $height/10}")
-    weight_kg=$(awk "BEGIN {printf \"%.1f\", $weight/10}")
-    
+
+    # Convert height to meters and weight to kg
+    height_m=$(echo "scale=1; $height/10" | bc)
+    weight_kg=$(echo "scale=1; $weight/10" | bc)
+
     # Append to CSV
-    echo "$name,$height_m,$weight_kg" >> "$report_file"
-    
-    # Add to totals
-    total_height=$(awk "BEGIN {print $total_height + $height_m}")
-    total_weight=$(awk "BEGIN {print $total_weight + $weight_kg}")
-    count=$((count + 1))
+    echo "$name,$height_m,$weight_kg" >> "$CSV_FILE"
 done
 
-# Calculate averages
-avg_height=$(awk "BEGIN {printf \"%.2f\", $total_height / $count}")
-avg_weight=$(awk "BEGIN {printf \"%.2f\", $total_weight / $count}")
+# Calculate averages using awk
+avg_height=$(awk -F',' 'NR>1 {sum+=$2; count++} END {if(count>0) printf "%.2f", sum/count; else print "0.00"}' "$CSV_FILE")
+avg_weight=$(awk -F',' 'NR>1 {sum+=$3; count++} END {if(count>0) printf "%.2f", sum/count; else print "0.00"}' "$CSV_FILE")
 
-# Display results
-echo "CSV Report generated at: $report_file"
-cat "$report_file"
-echo ""
-echo "Average Height: $avg_height m"
+# Output report
+echo -e "\nCSV Report generated at: $CSV_FILE"
+cat "$CSV_FILE"
+echo -e "\nAverage Height: $avg_height m"
 echo "Average Weight: $avg_weight kg"
